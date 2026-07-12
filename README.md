@@ -7,7 +7,7 @@ A static website that finds anyone's best Lichess games and shows them as an int
 **The key idea:** all the chess analysis (including Stockfish) runs *in the visitor's own browser*. That means:
 
 - **Free to host** — it's just static files (HTML/JS/WASM). GitHub Pages, Netlify, or Cloudflare Pages all host it for $0.
-- **Full Stockfish coverage** — games the visitor never analysed on Lichess get evaluated locally, on their CPU, not a server you pay for.
+- **Full Stockfish coverage** — games the visitor never analysed on Lichess get evaluated locally, on their CPU.
 - **Scales to anyone** — every visitor brings their own compute, so a thousand users cost the same as one.
 
 This is the same approach lichess.org itself uses for in-browser analysis.
