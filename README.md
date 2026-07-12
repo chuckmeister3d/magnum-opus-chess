@@ -2,10 +2,13 @@
 
 **Live site: [magnum-opus-chess.netlify.app](https://magnum-opus-chess.netlify.app)**
 
-A static website that finds anyone's best Lichess games and shows them as an interactive report: five ranked tabs, a scrubbable board for every game. Someone types their username, picks a date range, and gets their report.
+<img width="715" height="768" alt="Screenshot 2026-07-12 at 10 24 30" src="https://github.com/user-attachments/assets/1eb99c2e-8559-45b1-8019-ceda6e850681" />
+
+A light website that finds anyone's best Lichess games and shows them as an interactive report: five ranked tabs, a scrubbable board for every game. You type your username, pick a date range, and get your report.
+
+<img width="715" height="768" alt="Screenshot 2026-07-12 at 10 35 58" src="https://github.com/user-attachments/assets/44ebb6ef-a1c6-493f-962d-888eea4222d7" />
 
 **The key idea:** all the chess analysis (including Stockfish) runs *in the visitor's own browser*. That means:
-
 This is the same approach lichess.org itself uses for in-browser analysis.
 
 ## The five tabs
@@ -25,16 +28,7 @@ cd site
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
-
 Type a Lichess username, choose all-time or a date range, and go.
-
-## The example report
-
-`site/example.html` is a ready-made report, linked from the front page ("See an
-example report") so visitors can preview the output before running anything. The
-bundled one is a real report for the account `chuckmeister3d`. To feature someone
-else — Magnus Carlsen, say — run the site once for `DrNykterstein`, then save the
-resulting report over `site/example.html`.
 
 ## Structure
 
