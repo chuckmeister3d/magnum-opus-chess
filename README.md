@@ -2,11 +2,11 @@
 
 **Live site: [magnum-opus-chess.netlify.app](https://magnum-opus-chess.netlify.app)**
 
+A website that finds your best Lichess games and shows them as an interactive report: five ranked tabs, a scrubbable board for every game. You type your username, pick a date range, and get your report.
+
+
 <img width="715" height="768" alt="Screenshot 2026-07-12 at 10 24 30" src="https://github.com/user-attachments/assets/1eb99c2e-8559-45b1-8019-ceda6e850681" />
 
-A light website that finds anyone's best Lichess games and shows them as an interactive report: five ranked tabs, a scrubbable board for every game. You type your username, pick a date range, and get your report.
-
-<img width="715" height="768" alt="Screenshot 2026-07-12 at 10 35 58" src="https://github.com/user-attachments/assets/44ebb6ef-a1c6-493f-962d-888eea4222d7" />
 
 **The key idea:** all the chess analysis (including Stockfish) runs *in the visitor's own browser*. That means:
 This is the same approach lichess.org itself uses for in-browser analysis.
@@ -18,6 +18,10 @@ This is the same approach lichess.org itself uses for in-browser analysis.
 - **Biggest Underdogs** — widest rating-gap wins.
 - **Wild Rides** — games where the eval see-sawed wildly before the win.
 - **Swindles** — losing for a sustained stretch, then still winning (or escaping by stalemate).
+
+
+  <img width="715" height="768" alt="Screenshot 2026-07-12 at 10 35 58" src="https://github.com/user-attachments/assets/44ebb6ef-a1c6-493f-962d-888eea4222d7" />
+  
 
 ## Try it locally
 
