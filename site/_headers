@@ -1,0 +1,3 @@
+# No custom headers needed. (Cross-origin-isolation headers were removed: the
+# single-threaded Stockfish build doesn't need them, and they blocked the
+# analytics script.)

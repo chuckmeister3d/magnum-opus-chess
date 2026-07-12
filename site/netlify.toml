@@ -1,0 +1,6 @@
+[build]
+  publish = "."
+
+# No cross-origin-isolation headers. The bundled Stockfish is single-threaded and
+# doesn't need SharedArrayBuffer, and Cross-Origin-Embedder-Policy: require-corp
+# would block the third-party analytics script (GoatCounter) from loading.

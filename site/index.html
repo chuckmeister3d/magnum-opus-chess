@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>&#9822;</text></svg>">
+<title>Magnum Opus: your best Lichess games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1c1712;
+    --surface: #29211a;
+    --surface-hover: #332920;
+    --ink: #ede3d0;
+    --ink-muted: #a89a82;
+    --brass: #d4af37;
+    --brass-dim: #8a7429;
+    --felt: #5c8368;
+    --felt-bright: #7aa688;
+    --oxblood: #8b4a3d;
+    --rule: #3c3123;
+    --sq-light: #d9cbb0;
+    --sq-dark: #7a6449;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Work Sans', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 48px 24px 40px;
+  }
+
+  .page-header { margin-bottom: 12px; }
+
+  .eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 10px;
+  }
+  .beta-tag {
+    font-family: 'Space Mono', monospace; font-size: 9.5px; letter-spacing: 0.1em;
+    color: var(--bg); background: var(--brass); font-weight: 700;
+    padding: 2px 7px; border-radius: 999px; margin-left: 8px; vertical-align: middle;
+  }
+
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-size: 40px;
+    line-height: 1.1;
+    margin: 0 0 10px;
+  }
+
+  .sub { font-size: 15px; color: var(--ink-muted); margin: 0 0 6px; }
+  .sub .n { font-family: 'Space Mono', monospace; color: var(--ink); }
+
+  /* --- tabs --- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--rule);
+    margin: 28px 0 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    font-family: 'Work Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    background: none;
+    border: none;
+    padding: 12px 16px;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--brass); border-bottom-color: var(--brass); }
+  .tab:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+  .tab-explainer {
+    font-size: 13.5px;
+    color: var(--ink-muted);
+    line-height: 1.6;
+    max-width: 680px;
+    margin: 0 0 28px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+  .tab-explainer b { color: var(--felt-bright); font-weight: 600; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .empty-note { color: var(--ink-muted); font-size: 14px; padding: 20px 4px; }
+
+  /* --- shared bits --- */
+  .color-dot {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+    margin-right: 6px; position: relative; top: -1px;
+  }
+  .color-dot.white { background: #ede3d0; border: 1px solid #6b5f4c; }
+  .color-dot.black { background: #14100b; border: 1px solid #6b5f4c; }
+
+  .matchup { font-size: 16px; color: var(--ink); }
+  .matchup .vs { color: var(--ink-muted); margin: 0 6px; font-size: 13px; }
+  .meta { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--ink-muted); margin-top: 4px; }
+
+  .acc-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--rule); }
+  .acc-seg.you { background: var(--brass); }
+  .acc-seg.opp { background: var(--oxblood); }
+  .acc-labels {
+    display: flex; justify-content: space-between;
+    font-family: 'Space Mono', monospace; font-size: 11px; color: var(--ink-muted); margin-top: 4px;
+  }
+
+  .view-link { display: inline-block; font-size: 12.5px; color: var(--brass-dim); margin-top: 16px; text-decoration: none; }
+  .view-link:hover { color: var(--brass); }
+
+  .game-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 26px 28px;
+    margin-bottom: 22px;
+  }
+
+  .card-top { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 20px; }
+  .rank {
+    font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 34px;
+    color: var(--brass); line-height: 1; width: 52px; flex-shrink: 0;
+  }
+  .card-info { flex: 1; min-width: 0; }
+  .card-info a { color: inherit; text-decoration: none; }
+  .card-info a:hover .matchup { text-decoration: underline; }
+  .card-score { text-align: right; flex-shrink: 0; }
+  .score-num { display: block; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 26px; color: var(--felt-bright); }
+  .score-label {
+    font-family: 'Space Mono', monospace; font-size: 9.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-muted); white-space: nowrap;
+  }
+
+  .card-main { display: flex; gap: 26px; align-items: stretch; margin-bottom: 14px; }
+  .board-wrap { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
+  .board-wrap.focused .board-svg { border-color: var(--brass-dim); }
+  .board-svg { display: block; width: 280px; height: 280px; border-radius: 6px; border: 1px solid var(--rule); }
+  .last-move { fill: var(--brass); opacity: 0.28; }
+  .move-glyph-bg { fill: #1c1712; }
+  .glyph-blunder { fill: #ca3431; }
+  .glyph-mistake { fill: #d98c28; }
+  .glyph-inaccuracy { fill: #dbb64b; }
+  .glyph-text { fill: #fff; font-family: 'Work Sans', sans-serif; font-weight: 700; }
+
+  /* --- scrub controls --- */
+  .scrub-controls { display: flex; gap: 4px; margin-top: 10px; }
+  .scrub-btn {
+    font-family: 'Work Sans', sans-serif;
+    background: var(--rule); color: var(--ink); border: none; border-radius: 5px;
+    width: 30px; height: 26px; font-size: 12px; cursor: pointer; line-height: 1;
+  }
+  .scrub-btn:hover { background: var(--brass-dim); color: var(--bg); }
+  .scrub-btn.play-btn { background: var(--brass-dim); color: var(--bg); font-weight: 700; }
+  .scrub-btn.play-btn:hover { background: var(--brass); }
+  .scrub-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+  /* Stop mobile double-tap-to-zoom so quick repeated taps on the move buttons
+     register as taps instead of a zoom gesture. */
+  button, .scrub-slider, .graph-block, .board-wrap { touch-action: manipulation; }
+  .scrub-slider {
+    width: 280px; margin-top: 8px; accent-color: var(--brass);
+    height: 4px; cursor: pointer;
+  }
+  .scrub-label {
+    font-family: 'Space Mono', monospace; font-size: 10.5px; color: var(--ink-muted);
+    text-align: center; margin-top: 8px; min-height: 14px;
+  }
+  .scrub-label .mv { color: var(--felt-bright); }
+
+  .stats-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  .stats-col .acc-bar { width: 100%; max-width: 320px; }
+  .stats-col .acc-labels { max-width: 320px; }
+  .readout { font-family: 'Space Mono', monospace; font-size: 12.5px; color: var(--ink-muted); line-height: 1.7; }
+  .readout .hl { color: var(--felt-bright); }
+
+  .graph-block { flex: 1; min-height: 0; display: flex; flex-direction: column; cursor: pointer; }
+  .graph-inner { position: relative; flex: 1; min-height: 90px; }
+  .graph { width: 100%; height: 100%; display: block; opacity: 0.9; }
+  .graph-mid { stroke: var(--ink-muted); stroke-width: 1; opacity: 0.3; stroke-dasharray: 3 4; }
+  .graph-area { fill: var(--felt); opacity: 0.18; stroke: none; }
+  .graph-line { fill: none; stroke: var(--brass-dim); stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
+  .graph-dot {
+    position: absolute; width: 11px; height: 11px; border-radius: 50%;
+    background: var(--brass); border: 2px solid var(--bg);
+    transform: translate(-50%, -50%); pointer-events: none;
+  }
+  .graph-caption {
+    font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.03em;
+    color: var(--ink-muted); opacity: 0.8; margin-top: 6px;
+  }
+
+  footer.credits { font-size: 12px; color: var(--ink-muted); border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 8px; }
+  footer.credits a { color: var(--brass-dim); text-decoration: underline; }
+  footer.credits a:hover { color: var(--brass); }
+
+  .site-footer { margin-top: 44px; font-size: 12.5px; color: var(--ink-muted); }
+  .site-footer a { color: var(--brass-dim); text-decoration: none; }
+  .site-footer a:hover { color: var(--brass); text-decoration: underline; }
+  .site-footer .sep { margin: 0 9px; opacity: 0.4; }
+
+  #engine-warning {
+    font-size: 13px; color: #e6b05a; line-height: 1.55; max-width: 680px;
+    background: rgba(139, 74, 61, 0.16); border: 1px solid var(--oxblood);
+    border-radius: 10px; padding: 12px 15px; margin: 4px 0 20px;
+  }
+
+  @media (max-width: 640px) {
+    .page { padding: 32px 16px 48px; }
+    h1 { font-size: 28px; }
+    .card-top { gap: 12px; }
+    .rank { font-size: 26px; width: 38px; }
+    .score-num { font-size: 20px; }
+    .card-main { flex-direction: column; align-items: stretch; }
+    .board-wrap { align-self: center; }
+    .board-svg { width: min(260px, 74vw); height: min(260px, 74vw); }
+    .scrub-slider { width: min(260px, 74vw); }
+    .stats-col { gap: 14px; }
+    /* Give the graph box a DEFINITE height so the stretched SVG (height:100%)
+       resolves and fills it. Without this, in the column layout the SVG collapses
+       to its intrinsic viewBox ratio (shorter than the box) and the win% marker
+       dot — positioned by % of the box — drifts below the line. */
+    .graph-block { flex: none; }
+    .graph-inner { flex: none; height: 130px; min-height: 0; }
+  }
+
+
+  /* ---- site-specific UI (input form, progress, consent) ---- */
+  .hidden { display: none !important; }
+  .intro-card {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 16px;
+    padding: 32px; margin-top: 20px; max-width: 620px;
+  }
+  .intro-card h2 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px; margin: 0 0 6px; }
+  .intro-card p.lead { color: var(--ink-muted); font-size: 14.5px; line-height: 1.6; margin: 0 0 22px; }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--ink-muted); margin-bottom: 7px; font-family: 'Space Mono', monospace; }
+  .field input[type="text"], .field input[type="date"] {
+    width: 100%; background: var(--bg); border: 1px solid var(--rule); border-radius: 9px;
+    padding: 12px 14px; color: var(--ink); font-family: 'Work Sans', sans-serif; font-size: 15px;
+  }
+  .field input:focus { outline: none; border-color: var(--brass-dim); }
+  .radio-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .radio-row label { display: flex; align-items: center; gap: 7px; text-transform: none;
+    letter-spacing: 0; font-family: 'Work Sans', sans-serif; font-size: 14px; color: var(--ink); cursor: pointer; }
+  .radio-row input { accent-color: var(--brass); }
+  #custom-dates { display: none; gap: 14px; margin-top: 12px; }
+  #custom-dates .field { flex: 1; margin-bottom: 0; }
+  .run-btn {
+    background: var(--brass); color: var(--bg); border: none; border-radius: 9px;
+    padding: 13px 26px; font-family: 'Work Sans', sans-serif; font-weight: 600; font-size: 15px;
+    cursor: pointer; margin-top: 8px;
+  }
+  .run-btn:hover { background: #e6c04a; }
+  .run-btn:disabled { opacity: 0.5; cursor: default; }
+  .fine { font-size: 12px; color: var(--ink-muted); margin-top: 16px; line-height: 1.5; }
+  .fine a { color: var(--brass-dim); text-decoration: underline; }
+  .fine a:hover { color: var(--brass); }
+  .fine code { font-family: 'Space Mono', monospace; font-size: 0.92em; background: var(--rule);
+    padding: 1px 5px; border-radius: 4px; color: var(--felt-bright); }
+
+  .advanced { margin: 2px 0 6px; }
+  .advanced summary {
+    cursor: pointer; font-size: 13px; color: var(--brass-dim);
+    font-family: 'Space Mono', monospace; list-style: none;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .advanced summary::-webkit-details-marker { display: none; }
+  .advanced summary::before { content: '+'; font-weight: 700; width: 10px; display: inline-block; }
+  .advanced[open] summary::before { content: '\2212'; }
+  .advanced summary:hover { color: var(--brass); }
+
+  .progress-card, .consent-card {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 16px;
+    padding: 30px; margin-top: 20px; max-width: 620px;
+  }
+  #status-line { font-size: 14px; color: var(--ink-muted); margin-bottom: 22px; line-height: 1.5; }
+  .progress-track { height: 8px; background: var(--rule); border-radius: 5px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 0%; background: var(--brass); transition: width 0.3s ease; }
+
+  .example-cta { font-size: 13.5px; color: var(--ink-muted); margin: -6px 0 22px; }
+  .example-cta a { color: var(--brass); text-decoration: none; }
+  .example-cta a:hover { text-decoration: underline; }
+
+  .intro-error {
+    font-size: 13.5px; color: #e6b05a; line-height: 1.5;
+    background: rgba(139, 74, 61, 0.16); border: 1px solid var(--oxblood);
+    border-radius: 9px; padding: 10px 13px; margin: 0 0 18px;
+  }
+
+  /* stepped progress: each stage has its own labelled bar */
+  .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 22px; }
+  .step { opacity: 0.4; transition: opacity 0.25s ease; }
+  .step.active, .step.done { opacity: 1; }
+  .step-head { display: flex; align-items: center; gap: 11px; margin-bottom: 9px; }
+  .step-dot {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+    background: var(--rule); color: var(--ink-muted); border: 1px solid var(--rule);
+  }
+  .step.active .step-dot { background: var(--brass); color: var(--bg); border-color: var(--brass); }
+  .step.done .step-dot { background: var(--felt); color: var(--bg); border-color: var(--felt); }
+  .step-name { font-size: 14px; color: var(--ink); font-weight: 500; }
+  .step.active .step-name { color: var(--brass); }
+  .step-stat { margin-left: auto; font-family: 'Space Mono', monospace; font-size: 11.5px; color: var(--ink-muted); text-align: right; padding-left: 12px; }
+  .step.done .progress-fill { background: var(--felt); }
+
+  .consent-card h3 { font-family: 'Fraunces', serif; font-weight: 600; margin: 0 0 12px; }
+  #consent-detail { font-size: 14px; color: var(--ink); line-height: 1.6; margin-bottom: 16px; }
+  #consent-detail b { color: var(--felt-bright); }
+  .consent-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .consent-btns button { border-radius: 9px; padding: 11px 18px; font-family: 'Work Sans', sans-serif;
+    font-weight: 500; font-size: 14px; cursor: pointer; border: 1px solid var(--rule); }
+  #consent-go { background: var(--brass); color: var(--bg); border-color: var(--brass); font-weight: 600; }
+  #consent-skip { background: var(--surface); color: var(--ink); }
+  #consent-cancel { background: transparent; color: var(--ink-muted); }
+  #consent-cap-row { margin: 14px 0; font-size: 13px; color: var(--ink-muted); }
+  #consent-cap { width: 90px; background: var(--bg); border: 1px solid var(--rule); border-radius: 7px;
+    padding: 7px 10px; color: var(--ink); font-family: 'Space Mono', monospace; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="page-header">
+    <div class="eyebrow">Magnum Opus <span class="beta-tag">BETA</span></div>
+    <h1 id="site-title">Your best Lichess games</h1>
+  </header>
+
+  <!-- input form -->
+  <section id="intro">
+    <div class="intro-card">
+      <h2>See your five best games</h2>
+      <p class="lead">Type in a Lichess username and it sorts the games into five lists: your cleanest wins,
+        the highest-rated players you beat, your biggest rating upsets, games where the evaluation swung
+        back and forth, and games you were losing but still won. Each game comes with a board you can
+        play through. It all runs in your browser, and nothing is uploaded.</p>
+
+      <p class="fine" style="margin-top: -12px; margin-bottom: 18px;">This is a work in progress, so expect some rough edges. Feedback is welcome.</p>
+
+      <p class="example-cta">Curious what you'll get? <a href="example.html" target="_blank" rel="noopener">See an example report ↗</a></p>
+
+      <p class="intro-error hidden" id="intro-error"></p>
+
+      <div class="field">
+        <label for="username">Lichess username</label>
+        <input type="text" id="username" placeholder="e.g. DrNykterstein" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="field">
+        <label>Games to include</label>
+        <div class="radio-row">
+          <label><input type="radio" name="range" value="all" checked> All time</label>
+          <label><input type="radio" name="range" value="custom"> Date range</label>
+        </div>
+        <div id="custom-dates">
+          <div class="field"><label for="since">From</label><input type="date" id="since"></div>
+          <div class="field"><label for="until">To</label><input type="date" id="until"></div>
+        </div>
+      </div>
+
+      <details class="advanced">
+        <summary>Faster downloads (optional)</summary>
+        <div class="field" style="margin-top: 12px; margin-bottom: 0;">
+          <label for="token">Lichess API token</label>
+          <input type="password" id="token" placeholder="lip_… (optional)" autocomplete="off" spellcheck="false">
+          <p class="fine" style="margin-top: 8px;">Lichess limits anonymous downloads to ~20 games/second; a free token raises that to 30/s (60/s for your own games).
+            <a href="https://lichess.org/account/oauth/token/create?description=Magnum+Opus" target="_blank" rel="noopener">Open the Lichess token page&nbsp;↗</a>. The description is already filled in.
+            <b>You don't need to tick any of the permission checkboxes</b> (none are required): just scroll to the bottom and click <b>Create</b>, then copy the token it shows (it starts with <code>lip_</code>) and paste it in the box above.
+            It stays in your browser and is used only to talk to Lichess.</p>
+        </div>
+      </details>
+
+      <button class="run-btn" id="run-btn">Find my best games</button>
+
+      <p class="fine">Games you have already analysed on Lichess are scored right away. For the rest,
+        Stockfish runs in your browser, and you get a time estimate before it starts.</p>
+    </div>
+  </section>
+
+  <!-- progress: three stages, each with its own bar -->
+  <section id="progress-panel" class="hidden">
+    <div class="progress-card">
+      <div id="status-line">Working…</div>
+      <ol class="steps">
+        <li class="step" id="step-download">
+          <div class="step-head">
+            <span class="step-dot">1</span>
+            <span class="step-name">Download games</span>
+            <span class="step-stat" id="stat-download"></span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="fill-download"></div></div>
+        </li>
+        <li class="step" id="step-benchmark">
+          <div class="step-head">
+            <span class="step-dot">2</span>
+            <span class="step-name">Benchmark your device</span>
+            <span class="step-stat" id="stat-benchmark"></span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="fill-benchmark"></div></div>
+        </li>
+        <li class="step" id="step-analyse">
+          <div class="step-head">
+            <span class="step-dot">3</span>
+            <span class="step-name">Analyse remaining games</span>
+            <span class="step-stat" id="stat-analyse"></span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="fill-analyse"></div></div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- consent -->
+  <section id="consent-panel" class="hidden">
+    <div class="consent-card">
+      <h3>Analyse the rest?</h3>
+      <div id="consent-detail"></div>
+      <div id="consent-cap-row">
+        Cap at the most recent
+        <input type="number" id="consent-cap" min="1" step="50"> games (leave to keep it quick).
+      </div>
+      <div class="consent-btns">
+        <button id="consent-go">Analyse them</button>
+        <button id="consent-skip">Skip (analysed games only)</button>
+        <button id="consent-cancel">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- report (populated by render.js) -->
+  <section id="report-root" class="hidden">
+    <p class="sub" id="meta-line"></p>
+    <div id="engine-warning" class="hidden"></div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="flawless">Flawless</button>
+      <button class="tab" data-tab="highest_rated">Highest-Rated Wins</button>
+      <button class="tab" data-tab="underdogs">Biggest Upsets</button>
+      <button class="tab" data-tab="wild_rides">Wild Rides</button>
+      <button class="tab" data-tab="swindles">Swindles</button>
+    </nav>
+    <p class="tab-explainer" id="tab-explainer"></p>
+    <main>
+      <section class="panel active" id="panel-flawless"></section>
+      <section class="panel" id="panel-highest_rated"></section>
+      <section class="panel" id="panel-underdogs"></section>
+      <section class="panel" id="panel-wild_rides"></section>
+      <section class="panel" id="panel-swindles"></section>
+    </main>
+    <footer class="credits">Magnum Opus &copy; 2026 Charles Davison &middot; free software, no warranty &middot; <a href="./LICENSE">GPLv3</a>. Chess pieces: the cburnett set by Colin M. L. Burnett, as used by Lichess and Wikipedia (GPLv2+ / CC BY-SA). Analysis by Stockfish (GPLv3), running in your browser.</footer>
+  </section>
+
+  <!-- hidden title element render.js writes to; we keep the site title separate -->
+  <span id="header-title" class="hidden"></span>
+
+  <footer class="site-footer">
+    Questions or feedback? <a href="mailto:doings-treks-0a@icloud.com">doings-treks-0a@icloud.com</a>
+    <span class="sep">·</span>
+    <a href="https://buymeacoffee.com/chuckmeister3d" target="_blank" rel="noopener">&#9749; Buy me a coffee</a>
+  </footer>
+
+</div>
+
+<script type="module" src="main.js"></script>
+
+<!-- GoatCounter analytics: privacy-friendly, no cookies, no personal data -->
+<script data-goatcounter="https://chuckmeister3d.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
