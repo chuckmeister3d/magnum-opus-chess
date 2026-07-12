@@ -15,7 +15,7 @@ This is the same approach lichess.org itself uses for in-browser analysis.
 
 - **Flawless** — clean wins: no real blunders either side, never actually losing.
 - **Highest-Rated Wins** — the strongest opponents beaten.
-- **Biggest Underdogs** — widest rating-gap wins.
+- **Biggest Upsets** — widest rating-gap wins.
 - **Wild Rides** — games where the eval see-sawed wildly before the win.
 - **Swindles** — losing for a sustained stretch, then still winning (or escaping by stalemate).
 
