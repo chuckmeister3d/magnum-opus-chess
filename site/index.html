@@ -383,9 +383,9 @@
   <section id="intro">
     <div class="intro-card">
       <h2>See your five best games</h2>
-      <p class="lead">Type in a Lichess username and it sorts the games into five lists: your cleanest wins,
+      <p class="lead">Type in your Lichess and/or Chess.com username and it sorts your games into six lists: your cleanest wins,
         the highest-rated players you beat, your biggest rating upsets, games where the evaluation swung
-        back and forth, and games you were losing but still won. Each game comes with a board you can
+        back and forth, games you were losing but still won, and long endgames you ground out. Each game comes with a board you can
         play through. It all runs in your browser, and nothing is uploaded.</p>
 
       <p class="fine" style="margin-top: -12px; margin-bottom: 18px;">This is a work in progress, so expect some rough edges. Feedback is welcome.</p>
@@ -398,6 +398,12 @@
         <label for="username">Lichess username</label>
         <input type="text" id="username" placeholder="e.g. DrNykterstein" autocomplete="off" spellcheck="false">
       </div>
+
+      <div class="field">
+        <label for="username-cc">Chess.com username</label>
+        <input type="text" id="username-cc" placeholder="e.g. MagnusCarlsen" autocomplete="off" spellcheck="false">
+      </div>
+      <p class="fine" style="margin-top:-8px;margin-bottom:18px;">Fill in either or both. Games from both sites are pooled into one report. Chess.com games have no stored analysis, so they are all evaluated in your browser (slower).</p>
 
       <div class="field">
         <label>Games to include</label>

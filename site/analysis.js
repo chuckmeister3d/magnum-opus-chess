@@ -409,7 +409,7 @@ export function analyzeGame(parsed, username, precomputedEvals = null, opts = {}
   const gameDate = (h.UTCDate || h.Date || '').replace(/\./g, '-');
   // Open the game from the player's side (Lichess flips the board with /black).
   const baseUrl = (site || `https://lichess.org/${gameId}`).replace(/\/$/, '');
-  const gameUrl = myColor === 'b' ? `${baseUrl}/black` : baseUrl;
+  const gameUrl = (myColor === 'b' && /lichess\.org/.test(baseUrl)) ? `${baseUrl}/black` : baseUrl;
   const perf = CONFIG.PERF_TYPES.find(p => event.includes(p)) || '';
   // Tell a genuine time-forfeit (opponent flagged in time trouble) from an
   // opponent who left: look at the opponent's clock on their last move.
@@ -420,7 +420,7 @@ export function analyzeGame(parsed, username, precomputedEvals = null, opts = {}
     if ((i % 2 === 0) === oppIsWhite && clocks[i] != null) oppLastClock = clocks[i];
   }
   const termination = h.Termination || '';
-  const wonOnTime = myResult === 'win' && termination === 'Time forfeit';
+  const wonOnTime = myResult === 'win' && (termination === 'Time forfeit' || /won on time/i.test(termination));
   const oppAbandoned = wonOnTime && oppLastClock != null && oppLastClock > CONFIG.ABANDON_CLOCK_SEC;
 
   const r1 = x => Math.round(x * 10) / 10;

@@ -11,6 +11,7 @@ import * as pgn from './pgn.js';
 import * as an from './analysis.js';
 import * as engine from './engine.js';
 import { renderReport } from './render.js';
+import * as cc from './chesscom.js';
 
 const PIECES_URL = './assets/pieces.json';
 let PIECE_SVG = null;
@@ -67,8 +68,9 @@ let engineScript = null;
 let currentData = null;   // most recent report, for the "save/share report" button
 
 async function run() {
-  const username = el('username').value.trim();
-  if (!username) { setStatus('Please enter a Lichess username.'); return; }
+  const lichessUser = (el('username') && el('username').value.trim()) || '';
+  const chesscomUser = (el('username-cc') && el('username-cc').value.trim()) || '';
+  if (!lichessUser && !chesscomUser) { setStatus('Enter a Lichess and/or Chess.com username.'); return; }
 
   hide('intro');
   hide('report-root');
@@ -95,43 +97,58 @@ async function run() {
   let engineWarning = null;
 
   try {
-    // ---- STEP 1: download ----
+    // ---- STEP 1: download (Lichess and/or Chess.com, pooled) ----
     setStep('download', 'active');
-    setStatus(`Looking up ${username}…`);
-    const totalEstimate = await pgn.fetchGameCount(username, token, perfs);
-
-    setStatus(`Downloading ${username}'s games from Lichess…`);
-    const pgnText = await pgn.fetchGamesPGN(username, {
-      since, until, token, perfTypes, rated: !includeUnrated,
-      onProgress: (received, games) => {
-        const kb = Math.round(received / 1024);
-        // Drive the bar by game count against the account estimate (a date range
-        // is a subset of that total), falling back to bytes. Cap below full so the
-        // bar never reads "done" while games are still streaming in.
-        const byGames = totalEstimate ? games / totalEstimate : 0;
-        const byBytes = received / 6_000_000;
-        stepBar('download', Math.min(0.97, Math.max(byGames, byBytes)));
-        const label = (totalEstimate && !since && !until)
-          ? `${games} of ~${totalEstimate} games so far · ${kb} KB`
-          : `${games} games so far · ${kb} KB`;
-        stepStat('download', label);
-      },
-    });
-
-    setStatus('Reading games…');
-    const games = pgn.parsePGN(pgnText);
-    if (!games.length) { reset(`No games found for "${username}" in that range.`); return; }
-
-    // score the pre-evaluated games instantly, collect the rest
     const results = [];
-    const needEval = []; // {game, fens}
-    for (const g of games) {
-      const r = an.analyzeGame(g, username, null, { includeBots });
-      if (r && r.NEEDS_ENGINE_EVAL) needEval.push({ game: g, fens: r.NEEDS_ENGINE_EVAL });
-      else if (r) results.push(r);
+    const needEval = []; // { game, fens, username }
+    const counts = {};
+    let totalSeen = 0;
+
+    const ingest = (parsedGames, user) => {
+      for (const g of parsedGames) {
+        const r = an.analyzeGame(g, user, null, { includeBots });
+        if (r && r.NEEDS_ENGINE_EVAL) needEval.push({ game: g, fens: r.NEEDS_ENGINE_EVAL, username: user });
+        else if (r) results.push(r);
+      }
+    };
+
+    if (lichessUser) {
+      setStatus(`Looking up ${lichessUser} on Lichess...`);
+      const est = await pgn.fetchGameCount(lichessUser, token, perfs);
+      setStatus(`Downloading ${lichessUser}'s games from Lichess...`);
+      const pgnText = await pgn.fetchGamesPGN(lichessUser, {
+        since, until, token, perfTypes, rated: !includeUnrated,
+        onProgress: (received, games) => {
+          const kb = Math.round(received / 1024);
+          const byGames = est ? games / est : 0;
+          const byBytes = received / 6_000_000;
+          stepBar('download', Math.min(0.9, Math.max(byGames, byBytes)));
+          stepStat('download', `Lichess: ${games}${est && !since && !until ? ' of ~' + est : ''} games - ${kb} KB`);
+        },
+      });
+      const games = pgn.parsePGN(pgnText);
+      counts.lichess = games.length; totalSeen += games.length;
+      ingest(games, lichessUser);
     }
+
+    if (chesscomUser) {
+      setStatus(`Downloading ${chesscomUser}'s games from Chess.com...`);
+      const ccGames = await cc.fetchChesscomGames(chesscomUser, {
+        since, until, perfTypes, rated: !includeUnrated,
+        onProgress: (n) => { stepBar('download', 0.95); stepStat('download', `Chess.com: ${n} games so far...`); },
+      });
+      counts.chesscom = ccGames.length; totalSeen += ccGames.length;
+      ingest(ccGames, chesscomUser);
+    }
+
+    if (!totalSeen) { reset('No games found for those usernames in that range.'); return; }
+
+    const displayName = [lichessUser, chesscomUser].filter(Boolean).join(' + ');
+    const srcParts = [];
+    if (lichessUser) srcParts.push(`Lichess ${counts.lichess || 0}`);
+    if (chesscomUser) srcParts.push(`Chess.com ${counts.chesscom || 0}`);
     stepBar('download', 1);
-    stepStat('download', `${games.length} games · ${results.length} pre-analysed · ${needEval.length} to evaluate`);
+    stepStat('download', `${totalSeen} games (${srcParts.join(', ')}) - ${results.length} pre-analysed - ${needEval.length} to evaluate`);
     setStep('download', 'done');
 
     // ---- STEPS 2 & 3: only when some games need local evaluation ----
@@ -188,7 +205,7 @@ async function run() {
           for (let i = 0; i < toEval.length; i++) {
             const evals = evalMap[i];
             if (!evals) continue;
-            const r = an.analyzeGame(toEval[i].game, username, evals, { includeBots });
+            const r = an.analyzeGame(toEval[i].game, toEval[i].username, evals, { includeBots });
             if (r && !r.NEEDS_ENGINE_EVAL) { r.evals_from = 'engine'; results.push(r); }
           }
           stepBar('analyse', 1);
@@ -211,7 +228,7 @@ async function run() {
 
     // ---- build report ----
     setStatus('Building your report…');
-    const data = an.rankIntoTabs(results, username, games.length, undefined, { includeBots, includeUnrated });
+    const data = an.rankIntoTabs(results, displayName, totalSeen, undefined, { includeBots, includeUnrated });
     currentData = data;
     const pieces = await loadPieces();
 
@@ -235,7 +252,7 @@ async function run() {
 function askConsent(nGames, workers, estSeconds) {
   return new Promise((resolve) => {
     el('consent-detail').innerHTML =
-      `${nGames} of your games haven't been analysed on Lichess. ` +
+      `${nGames} of your games don't have a stored analysis. ` +
       `Your browser can analyse them with Stockfish using ${workers} parallel worker(s). ` +
       `Estimated time: <b>~${humanDuration(estSeconds)}</b>.`;
     const capNote = nGames > 300;

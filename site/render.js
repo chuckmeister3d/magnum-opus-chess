@@ -364,7 +364,8 @@ function gameCard(tab, r, rank) {
                       ply: startPly, playing: false, timer: null };
 
   // share payload + Lichess animated-GIF link (oriented from the player's side)
-  const gifUrl = `https://lichess.org/game/export/gif/${r.my_color}/${r.id}.gif`;
+  const isLichess = /lichess\.org/.test(r.url);
+  const gifUrl = isLichess ? `https://lichess.org/game/export/gif/${r.my_color}/${r.id}.gif` : null;
   const perfPart = r.perf ? cap(r.perf) + ' ' : '';
   shareData[key] = {
     url: r.url,
@@ -407,9 +408,9 @@ function gameCard(tab, r, rank) {
       </div>
     </div>
     <div class="card-actions">
-      <a class="view-link" href="${r.url}" target="_blank" rel="noopener">View on Lichess \u2197</a>
+      <a class="view-link" href="${r.url}" target="_blank" rel="noopener">View on ${isLichess ? 'Lichess' : 'Chess.com'} \u2197</a>
       <button type="button" class="share-btn" data-share-key="${key}">Share</button>
-      <a class="gif-link" href="${gifUrl}" target="_blank" rel="noopener" title="Animated GIF of the game, from Lichess">GIF \u2197</a>
+      ${gifUrl ? `<a class="gif-link" href="${gifUrl}" target="_blank" rel="noopener" title="Animated GIF of the game, from Lichess">GIF \u2197</a>` : ''}
     </div>
   </div>`;
 }
