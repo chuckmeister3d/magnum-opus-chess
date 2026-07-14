@@ -5,7 +5,7 @@
 A website that finds your best Lichess/Chess.com games and shows them as an interactive report: five ranked tabs, a scrubbable board for every game. You type your username, pick a date range, and get your report.
 
 
-<img width="702" height="836" alt="Screenshot 2026-07-14 at 10 04 40" src="https://github.com/user-attachments/assets/1e059649-6631-4117-a122-83681e989524" />
+<img width="702" height="836" alt="Screenshot 2026-07-14 at 10 04 40" src="https://github.com/user-attachments/assets/349728bc-ebf2-4783-b2c0-24a662bfa2c2" />
 
 
 
