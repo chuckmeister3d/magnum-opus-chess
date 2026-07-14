@@ -54,10 +54,11 @@ ok(r.worst_my_wp >= 40, `worst_my_wp>=40 (got ${r && r.worst_my_wp})`);
 ok(r.best_my_wp >= 65, `best_my_wp>=65 — a real advantage (got ${r && r.best_my_wp})`);
 ok(typeof r.combined_accuracy === 'number', `combined_accuracy is number (${r && r.combined_accuracy})`);
 ok(r.all_fens.length === 34, `all_fens=34 (got ${r && r.all_fens && r.all_fens.length})`);
+ok(r.ended_in_checkmate === true, `ended_in_checkmate=true — Opera game ends in Rd8# (got ${r && r.ended_in_checkmate})`);
 
 console.log('== Test 2: ranking into the five tabs ==');
 const data = rankIntoTabs([r], 'testuser', 1);
-ok(['flawless','highest_rated','underdogs','wild_rides','swindles'].every(k => Array.isArray(data[k])), 'all five tab arrays present');
+ok(['flawless','highest_rated','underdogs','wild_rides','swindles','endgame_grinds'].every(k => Array.isArray(data[k])), 'all six tab arrays present');
 ok(data.flawless.length === 1, `game is Flawless (len ${data.flawless.length})`);
 ok(data.highest_rated.length === 1, `game in Highest-Rated (len ${data.highest_rated.length})`);
 ok(data.underdogs.length === 1 && data.underdogs[0].rating_diff === 400, `Underdog rating_diff=400 (got ${data.underdogs[0] && data.underdogs[0].rating_diff})`);
