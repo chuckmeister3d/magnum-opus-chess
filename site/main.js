@@ -64,6 +64,7 @@ function getDateRange() {
 }
 
 let engineScript = null;
+let currentData = null;   // most recent report, for the "save/share report" button
 
 async function run() {
   const username = el('username').value.trim();
@@ -78,22 +79,30 @@ async function run() {
 
   const { since, until } = getDateRange();
   const token = (el('token') && el('token').value.trim()) || null;
+  const includeBots = !!(el('include-bots') && el('include-bots').checked);
+  const includeUnrated = !!(el('include-unrated') && el('include-unrated').checked);
+  const perfs = Array.from(document.querySelectorAll('.perf-check:checked')).map(c => c.value);
   const rangeMode = document.querySelector('input[name="range"]:checked')?.value;
   if (rangeMode === 'custom' && !since && !until) {
     reset('Pick a "From" and/or "To" date for the range, or choose "All time".');
     return;
   }
+  if (!perfs.length) {
+    reset('Pick at least one time control (bullet, blitz, rapid, or classical).');
+    return;
+  }
+  const perfTypes = perfs.join(',');
   let engineWarning = null;
 
   try {
     // ---- STEP 1: download ----
     setStep('download', 'active');
     setStatus(`Looking up ${username}…`);
-    const totalEstimate = await pgn.fetchGameCount(username, token);
+    const totalEstimate = await pgn.fetchGameCount(username, token, perfs);
 
     setStatus(`Downloading ${username}'s games from Lichess…`);
     const pgnText = await pgn.fetchGamesPGN(username, {
-      since, until, token,
+      since, until, token, perfTypes, rated: !includeUnrated,
       onProgress: (received, games) => {
         const kb = Math.round(received / 1024);
         // Drive the bar by game count against the account estimate (a date range
@@ -117,7 +126,7 @@ async function run() {
     const results = [];
     const needEval = []; // {game, fens}
     for (const g of games) {
-      const r = an.analyzeGame(g, username);
+      const r = an.analyzeGame(g, username, null, { includeBots });
       if (r && r.NEEDS_ENGINE_EVAL) needEval.push({ game: g, fens: r.NEEDS_ENGINE_EVAL });
       else if (r) results.push(r);
     }
@@ -179,7 +188,7 @@ async function run() {
           for (let i = 0; i < toEval.length; i++) {
             const evals = evalMap[i];
             if (!evals) continue;
-            const r = an.analyzeGame(toEval[i].game, username, evals);
+            const r = an.analyzeGame(toEval[i].game, username, evals, { includeBots });
             if (r && !r.NEEDS_ENGINE_EVAL) { r.evals_from = 'engine'; results.push(r); }
           }
           stepBar('analyse', 1);
@@ -202,7 +211,8 @@ async function run() {
 
     // ---- build report ----
     setStatus('Building your report…');
-    const data = an.rankIntoTabs(results, username, games.length);
+    const data = an.rankIntoTabs(results, username, games.length, undefined, { includeBots, includeUnrated });
+    currentData = data;
     const pieces = await loadPieces();
 
     hide('progress-panel');
@@ -257,7 +267,76 @@ function reset(msg) {
   el('run-btn').disabled = false;
 }
 
+// Build a standalone, self-contained HTML copy of the current report: the data and
+// piece SVGs are baked in and render.js is inlined, so the file renders on its own
+// (no server, no re-analysis) and can be shared or reopened anywhere.
+async function buildStandaloneReport(data) {
+  await loadPieces();
+  const renderSrc = await (await fetch('./render.js')).text();
+  const styleEl = document.querySelector('style');
+  const styles = styleEl ? styleEl.textContent : '';
+  const root = document.getElementById('report-root').cloneNode(true);
+  root.classList.remove('hidden');
+  root.querySelectorAll('.panel').forEach((p, i) => { p.innerHTML = ''; p.classList.toggle('active', i === 0); });
+  root.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+  const ml = root.querySelector('#meta-line'); if (ml) ml.innerHTML = '';
+  const te = root.querySelector('#tab-explainer'); if (te) te.textContent = '';
+  const ew = root.querySelector('#engine-warning'); if (ew) { ew.textContent = ''; ew.classList.add('hidden'); }
+  const ra = root.querySelector('.report-actions'); if (ra) ra.remove(); // no download button inside a downloaded file
+  const shell = root.outerHTML;
+  const renderInline = renderSrc.replace(/export\s+function\s+renderReport/, 'function renderReport');
+  const enc = (obj) => JSON.stringify(obj).replace(/</g, '\\u003c'); // keep </script> etc. from breaking out
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${data.meta.username}'s best Lichess games — Magnum Opus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>${styles}</style></head>
+<body><div class="page">
+<header class="page-header"><div class="eyebrow">Magnum Opus</div><h1 id="header-title">Best games</h1></header>
+<p class="sub">A report from <a href="https://magnum-opus-chess.netlify.app" style="color:var(--brass);text-decoration:none">Magnum Opus</a> — make your own at magnum-opus-chess.netlify.app</p>
+${shell}
+</div>
+<script id="game-data" type="application/json">${enc(data)}</script>
+<script id="piece-data" type="application/json">${enc(PIECE_SVG)}</script>
+<script>
+${renderInline}
+renderReport(JSON.parse(document.getElementById('game-data').textContent), JSON.parse(document.getElementById('piece-data').textContent));
+</script>
+</body></html>`;
+}
+
+function triggerDownload(filename, text) {
+  const blob = new Blob([text], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
 el('run-btn').addEventListener('click', run);
+
+{
+  const dlBtn = el('download-report');
+  if (dlBtn) dlBtn.addEventListener('click', async () => {
+    if (!currentData) return;
+    const orig = dlBtn.textContent;
+    dlBtn.textContent = 'Preparing…'; dlBtn.disabled = true;
+    try {
+      const html = await buildStandaloneReport(currentData);
+      triggerDownload(`magnum-opus-${currentData.meta.username}.html`, html);
+      dlBtn.textContent = orig;
+    } catch (e) {
+      console.error('MO: report download failed', e);
+      dlBtn.textContent = 'Could not build file';
+      setTimeout(() => { dlBtn.textContent = orig; }, 1800);
+    }
+    dlBtn.disabled = false;
+  });
+}
 el('username').addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
 document.querySelectorAll('input[name="range"]').forEach(r =>
   r.addEventListener('change', () => {

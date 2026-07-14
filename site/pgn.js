@@ -124,7 +124,7 @@ function toEpochMs(dateStr) {
 // Best-effort total game count for the standard speeds we care about, used only
 // to show "X of ~Y" during the download. One small JSON request (not throttled
 // like the game stream). Returns a number, or null if it can't be read.
-export async function fetchGameCount(username, token = null) {
+export async function fetchGameCount(username, token = null, speeds = ['bullet', 'blitz', 'rapid', 'classical']) {
   try {
     const headers = { Accept: 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -132,8 +132,9 @@ export async function fetchGameCount(username, token = null) {
     if (!resp.ok) return null;
     const data = await resp.json();
     const perfs = data.perfs || {};
+    const wanted = (speeds && speeds.length) ? speeds : ['bullet', 'blitz', 'rapid', 'classical'];
     let sum = 0, any = false;
-    for (const s of ['bullet', 'blitz', 'rapid', 'classical']) {
+    for (const s of wanted) {
       const g = perfs[s] && perfs[s].games;
       if (typeof g === 'number') { sum += g; any = true; }
     }
@@ -147,7 +148,7 @@ export async function fetchGameCount(username, token = null) {
 
 export async function fetchGamesPGN(username, { since = null, until = null, token = null,
                                                 perfTypes = 'bullet,blitz,rapid,classical',
-                                                onProgress = null } = {}) {
+                                                rated = true, onProgress = null } = {}) {
   // NOTE: do NOT send `analysed`. On the Lichess API it is a *filter*
   // ("[Filter] Only games with or without a computer analysis available"), so
   // analysed=false would return ONLY un-analysed games and drop every game the
@@ -155,13 +156,13 @@ export async function fetchGamesPGN(username, { since = null, until = null, toke
   // instantly. Omitting it returns all games; `evals=true` still attaches the
   // stored evals wherever Lichess has them, and we fill the rest with Stockfish.
   const params = new URLSearchParams({
-    rated: 'true',
     tags: 'true',
     clocks: 'true',   // needed to tell a real time-forfeit from an opponent who left
     evals: 'true',
     opening: 'true',
     perfType: perfTypes,
   });
+  if (rated) params.set('rated', 'true');   // omit to include unrated (casual) games too
   const sinceMs = toEpochMs(since), untilMs = toEpochMs(until);
   if (sinceMs) params.set('since', sinceMs);
   if (untilMs) params.set('until', untilMs);

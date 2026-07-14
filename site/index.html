@@ -135,6 +135,17 @@
 
   .view-link { display: inline-block; font-size: 12.5px; color: var(--brass-dim); margin-top: 16px; text-decoration: none; }
   .view-link:hover { color: var(--brass); }
+  .card-actions { display: flex; align-items: center; gap: 20px; margin-top: 16px; flex-wrap: wrap; }
+  .card-actions .view-link { margin-top: 0; }
+  .share-btn {
+    font-family: 'Work Sans', sans-serif; font-size: 12.5px; color: var(--brass-dim);
+    background: none; border: none; padding: 0; cursor: pointer;
+  }
+  .share-btn:hover { color: var(--brass); }
+  .share-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  .share-btn:disabled { color: var(--felt-bright); cursor: default; }
+  .gif-link { font-size: 12.5px; color: var(--brass-dim); text-decoration: none; }
+  .gif-link:hover { color: var(--brass); }
 
   .game-card {
     background: var(--surface);
@@ -220,6 +231,15 @@
   footer.credits a { color: var(--brass-dim); text-decoration: underline; }
   footer.credits a:hover { color: var(--brass); }
 
+  .report-actions { margin: 8px 0 16px; }
+  .download-btn {
+    font-family: 'Work Sans', sans-serif; font-size: 13px; font-weight: 500;
+    color: var(--bg); background: var(--brass); border: none; border-radius: 8px;
+    padding: 9px 16px; cursor: pointer;
+  }
+  .download-btn:hover { background: #e6c04a; }
+  .download-btn:disabled { opacity: 0.6; cursor: default; }
+
   .site-footer { margin-top: 44px; font-size: 12.5px; color: var(--ink-muted); }
   .site-footer a { color: var(--brass-dim); text-decoration: none; }
   .site-footer a:hover { color: var(--brass); text-decoration: underline; }
@@ -296,6 +316,10 @@
   .advanced summary::before { content: '+'; font-weight: 700; width: 10px; display: inline-block; }
   .advanced[open] summary::before { content: '\2212'; }
   .advanced summary:hover { color: var(--brass); }
+
+  .opt-row { margin-bottom: 18px; }
+  .opt-check { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink); cursor: pointer; }
+  .opt-check input { accent-color: var(--brass); width: 16px; height: 16px; flex: 0 0 auto; }
 
   .progress-card, .consent-card {
     background: var(--surface); border: 1px solid var(--rule); border-radius: 16px;
@@ -387,6 +411,23 @@
         </div>
       </div>
 
+      <div class="field">
+        <label>Time controls</label>
+        <div class="radio-row">
+          <label><input type="checkbox" class="perf-check" value="bullet" checked> Bullet</label>
+          <label><input type="checkbox" class="perf-check" value="blitz" checked> Blitz</label>
+          <label><input type="checkbox" class="perf-check" value="rapid" checked> Rapid</label>
+          <label><input type="checkbox" class="perf-check" value="classical" checked> Classical</label>
+        </div>
+      </div>
+
+      <div class="opt-row">
+        <label class="opt-check"><input type="checkbox" id="include-unrated"> Include unrated (casual) games</label>
+      </div>
+      <div class="opt-row">
+        <label class="opt-check"><input type="checkbox" id="include-bots"> Include games against bots</label>
+      </div>
+
       <details class="advanced">
         <summary>Faster downloads (optional)</summary>
         <div class="field" style="margin-top: 12px; margin-bottom: 0;">
@@ -459,6 +500,9 @@
   <!-- report (populated by render.js) -->
   <section id="report-root" class="hidden">
     <p class="sub" id="meta-line"></p>
+    <div class="report-actions">
+      <button id="download-report" class="download-btn" type="button">⤓ Save or share this report</button>
+    </div>
     <div id="engine-warning" class="hidden"></div>
     <nav class="tabs">
       <button class="tab active" data-tab="flawless">Flawless</button>
@@ -466,6 +510,7 @@
       <button class="tab" data-tab="underdogs">Biggest Upsets</button>
       <button class="tab" data-tab="wild_rides">Wild Rides</button>
       <button class="tab" data-tab="swindles">Swindles</button>
+      <button class="tab" data-tab="endgame_grinds">Endgame Grinds</button>
     </nav>
     <p class="tab-explainer" id="tab-explainer"></p>
     <main>
@@ -474,6 +519,7 @@
       <section class="panel" id="panel-underdogs"></section>
       <section class="panel" id="panel-wild_rides"></section>
       <section class="panel" id="panel-swindles"></section>
+      <section class="panel" id="panel-endgame_grinds"></section>
     </main>
     <footer class="credits">Magnum Opus &copy; 2026 Charles Davison &middot; free software, no warranty &middot; <a href="./LICENSE">GPLv3</a>. Chess pieces: the cburnett set by Colin M. L. Burnett, as used by Lichess and Wikipedia (GPLv2+ / CC BY-SA). Analysis by Stockfish (GPLv3), running in your browser.</footer>
   </section>

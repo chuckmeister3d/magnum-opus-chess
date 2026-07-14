@@ -14,6 +14,7 @@ const EXPLAINERS = {
   underdogs: "Wins against players rated above you, sorted by how big the rating gap was.",
   wild_rides: "Wins where the evaluation swung back and forth between winning and losing several times before the game settled. If you played a sound sacrifice along the way, the game moves up the list.",
   swindles: "Games where you were losing badly (win probability under 3% at the worst) and stayed well behind for a good part of the game, but still won or drew by stalemate.",
+  endgame_grinds: "Wins that came down to a long endgame. Both sides traded down to a rook and a couple of pieces at most, stayed there for a good stretch, and you still brought the point home. Sorted by how long the endgame lasted.",
 };
 
 const CRIT_LABEL = {
@@ -144,7 +145,44 @@ function graphSVG(winpc, markerPly) {
 // ---- scrubber state, one entry per rendered card ----
 const scrubState = {};
 
+// ---- share payloads, one per rendered card (built in gameCard, wired below) ----
+const shareData = {};
+const SHARE_SITE = 'https://magnum-opus-chess.netlify.app';
+
 function cardKey(tab, gameId) { return `${tab}__${gameId}`; }
+
+// briefly show a confirmation on a button, then restore its label
+function flashBtn(btn, msg) {
+  const orig = btn.dataset.orig || btn.textContent;
+  btn.dataset.orig = orig;
+  btn.textContent = msg;
+  btn.disabled = true;
+  clearTimeout(btn._flashTimer);
+  btn._flashTimer = setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600);
+}
+
+// Wire the Share buttons. Uses the native share sheet where available (phones),
+// and falls back to copying the link to the clipboard on desktop.
+function initShareButtons(container) {
+  container.querySelectorAll('.share-btn[data-share-key]').forEach(btn => {
+    const data = shareData[btn.dataset.shareKey];
+    if (!data) return;
+    btn.addEventListener('click', async () => {
+      const text = `${data.text} (${SHARE_SITE})`;
+      if (navigator.share) {
+        try { await navigator.share({ title: data.title, text, url: data.url }); return; }
+        catch (err) { if (err && err.name === 'AbortError') return; } // cancelled; else fall back
+      }
+      const blob = `${data.text}\n${data.url}\n${SHARE_SITE}`;
+      try {
+        await navigator.clipboard.writeText(blob);
+        flashBtn(btn, 'Link copied ✓');
+      } catch (err) {
+        window.prompt('Copy this to share:', blob);
+      }
+    });
+  });
+}
 
 function renderScrub(key) {
   const st = scrubState[key];
@@ -293,6 +331,10 @@ const TAB_CONFIG = {
     extra: r => r.ended_in_stalemate ? 'escaped via <span class="hl">stalemate</span>'
       : (r.won_on_time ? 'won <span class="hl">on the clock</span> (opponent flagged)' : 'won from the brink'),
   },
+  endgame_grinds: {
+    score: r => Math.round(r.endgame_run / 2), scoreLabel: 'moves in endgame',
+    extra: r => `${r.ended_in_checkmate ? 'finished by <span class="hl">checkmate</span><br/>' : ''}rating &Delta; ${sign(r.rating_diff)}${r.rating_diff}`,
+  },
 };
 
 // index of the deepest dip in a win% array - the scariest moment of the game
@@ -313,10 +355,22 @@ function gameCard(tab, r, rank) {
   let startPly = r.all_fens.length - 1;
   if (tab === 'wild_rides') {
     startPly = Math.min(deepestDipPly(r.winpc), r.all_fens.length - 1);
+  } else if (tab === 'endgame_grinds') {
+    // open at the moment the endgame began, so the grind is front and centre
+    startPly = Math.min(r.endgame_start_ply || 0, r.all_fens.length - 1);
   }
   scrubState[key] = { fens: r.all_fens, sans: r.sans, winpc: r.winpc, myColor: r.my_color,
                       glyphs: r.move_glyphs, squares: r.move_squares,
                       ply: startPly, playing: false, timer: null };
+
+  // share payload + Lichess animated-GIF link (oriented from the player's side)
+  const gifUrl = `https://lichess.org/game/export/gif/${r.my_color}/${r.id}.gif`;
+  const perfPart = r.perf ? cap(r.perf) + ' ' : '';
+  shareData[key] = {
+    url: r.url,
+    title: 'Magnum Opus: your best Lichess games',
+    text: `♞ My ${perfPart}win vs ${r.opp_name} (${r.opp_rating}), found with Magnum Opus`,
+  };
 
   return `<div class="game-card">
     <div class="card-top">
@@ -352,7 +406,11 @@ function gameCard(tab, r, rank) {
         <div class="graph-caption">win probability, move by move &middot; click to jump, \u2190/\u2192 to step</div>
       </div>
     </div>
-    <a class="view-link" href="${r.url}" target="_blank" rel="noopener">View on Lichess \u2197</a>
+    <div class="card-actions">
+      <a class="view-link" href="${r.url}" target="_blank" rel="noopener">View on Lichess \u2197</a>
+      <button type="button" class="share-btn" data-share-key="${key}">Share</button>
+      <a class="gif-link" href="${gifUrl}" target="_blank" rel="noopener" title="Animated GIF of the game, from Lichess">GIF \u2197</a>
+    </div>
   </div>`;
 }
 
@@ -364,6 +422,7 @@ function renderTab(tab, list) {
   }
   panel.innerHTML = list.map((r, i) => gameCard(tab, r, i + 1)).join('');
   initScrubbers(panel);
+  initShareButtons(panel);
 }
 
 renderTab('flawless', DATA.flawless);
@@ -371,10 +430,11 @@ renderTab('highest_rated', DATA.highest_rated);
 renderTab('underdogs', DATA.underdogs);
 renderTab('wild_rides', DATA.wild_rides);
 renderTab('swindles', DATA.swindles);
+renderTab('endgame_grinds', DATA.endgame_grinds || []);
 
 document.getElementById('header-title').textContent = `${DATA.meta.username}'s best games`;
 document.getElementById('meta-line').innerHTML =
-  `<span class="n">${DATA.meta.games_analyzed}</span> rated standard games, no bots ` +
+  `<span class="n">${DATA.meta.games_analyzed}</span> ${DATA.meta.include_unrated ? 'standard games' : 'rated standard games'}${DATA.meta.include_bots ? '' : ', no bots'} ` +
   `(<span class="n">${DATA.meta.wins_analyzed}</span> wins) ` +
   `&middot; ${fmtDate(DATA.meta.date_from)} \u2013 ${fmtDate(DATA.meta.date_to)}`;
 document.getElementById('tab-explainer').textContent = EXPLAINERS.flawless;

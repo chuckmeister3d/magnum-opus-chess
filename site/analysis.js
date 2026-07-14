@@ -47,6 +47,19 @@ export const CONFIG = {
   // A time-forfeit "win" where the opponent still had more than this many seconds
   // on their clock is treated as them leaving/abandoning, not a genuine flag.
   ABANDON_CLOCK_SEC: 15,
+
+  // --- endgame detection (Flawless depth bonus + the Endgame Grinds tab) ---
+  // A position counts as "in the endgame" when BOTH sides are at or below this much
+  // non-pawn material (queen=9, rook=5, bishop/knight=3). 13 ≈ queens off, at most a
+  // rook and a couple of minors each.
+  ENDGAME_MAX_SIDE_NP: 13,
+  // A win is an "endgame grind" if it stayed in the endgame for at least this many
+  // consecutive plies.
+  ENDGAME_GRIND_MIN_PLIES: 16,
+  // Flawless wins get a small ranking nudge for going the distance, so quick wins
+  // stop crowding out the deeper ones.
+  FLAWLESS_CHECKMATE_BONUS: 3.0,
+  FLAWLESS_ENDGAME_BONUS: 2.0,
 };
 
 const CRITICALITY_RANK = {
@@ -181,6 +194,17 @@ function materialValue(chess, color) {
   return total;
 }
 
+// non-pawn material for one side (queens/rooks/bishops/knights; king counts 0)
+function nonPawnMaterial(chess, color) {
+  let total = 0;
+  for (const row of chess.board()) {
+    for (const sq of row) {
+      if (sq && sq.color === color && sq.type !== 'p') total += PIECE_VALUES[sq.type];
+    }
+  }
+  return total;
+}
+
 // square name 'e4' -> [file 0-7, rank 0-7]
 function sqToFileRank(sq) {
   return [sq.charCodeAt(0) - 97, parseInt(sq[1], 10) - 1];
@@ -189,7 +213,7 @@ function sqToFileRank(sq) {
 // ===================== the big one: analyzeGame =====================
 // pgnGame: { headers: {...}, moves: [{san, from, to, uci}], comments: [str per ply] }
 // We parse moves ourselves with chess.js from the SAN list.
-export function analyzeGame(parsed, username, precomputedEvals = null) {
+export function analyzeGame(parsed, username, precomputedEvals = null, opts = {}) {
   const h = parsed.headers;
   const whiteName = (h.White || '').toLowerCase();
   const blackName = (h.Black || '').toLowerCase();
@@ -201,7 +225,7 @@ export function analyzeGame(parsed, username, precomputedEvals = null) {
 
   if (CONFIG.STANDARD_ONLY && (h.Variant || 'Standard') !== 'Standard') return null;
 
-  if (CONFIG.EXCLUDE_BOTS) {
+  if (!opts.includeBots) {  // exclude games against bots unless the user opts in
     const oppTitle = myColor === 'w' ? h.BlackTitle : h.WhiteTitle;
     if (oppTitle === 'BOT') return null;
   }
@@ -221,6 +245,7 @@ export function analyzeGame(parsed, username, precomputedEvals = null) {
   const chess = new Chess();
   const sans = [], moves = [], fensBefore = [];
   const mdWhite = [materialValue(chess, 'w') - materialValue(chess, 'b')];
+  const wNP = [nonPawnMaterial(chess, 'w')], bNP = [nonPawnMaterial(chess, 'b')];
 
   for (const san of parsed.moves) {
     fensBefore.push(chess.fen());
@@ -234,6 +259,8 @@ export function analyzeGame(parsed, username, precomputedEvals = null) {
     sans.push(mv.san);
     moves.push({ from: mv.from, to: mv.to });
     mdWhite.push(materialValue(chess, 'w') - materialValue(chess, 'b'));
+    wNP.push(nonPawnMaterial(chess, 'w'));
+    bNP.push(nonPawnMaterial(chess, 'b'));
   }
 
   let evals;
@@ -247,9 +274,22 @@ export function analyzeGame(parsed, username, precomputedEvals = null) {
 
   const finalFen = chess.fen();
   const endedInStalemate = chess.isStalemate();
+  const endedInCheckmate = chess.isCheckmate();
   const allFens = [...fensBefore, finalFen];
   const plyCount = sans.length;
   if (plyCount < 6) return null;
+
+  // Endgame reach: the longest run of consecutive plies where BOTH sides are at or
+  // below the endgame material ceiling. wNP/bNP are indexed like allFens.
+  let egRun = 0, egBest = 0, egStart = 0, egBestStart = 0;
+  for (let i = 0; i < wNP.length; i++) {
+    if (Math.max(wNP[i], bNP[i]) <= CONFIG.ENDGAME_MAX_SIDE_NP) {
+      if (egRun === 0) egStart = i;
+      egRun++;
+      if (egRun > egBest) { egBest = egRun; egBestStart = egStart; }
+    } else egRun = 0;
+  }
+  const reachedEndgame = egBest > 0;
 
   if (evals.every(e => e == null)) {
     if (precomputedEvals === null) {
@@ -417,6 +457,10 @@ export function analyzeGame(parsed, username, precomputedEvals = null) {
     move_glyphs: moveGlyphs,
     move_squares: moveSquares,
     ended_in_stalemate: endedInStalemate,
+    ended_in_checkmate: endedInCheckmate,
+    reached_endgame: reachedEndgame,
+    endgame_run: egBest,
+    endgame_start_ply: egBestStart,
   };
 }
 
@@ -440,7 +484,11 @@ export function leaderboardScore(g) {
   const rd = ratingDiff(g);
   const bonus = Math.max(-CONFIG.RATING_BONUS_CAP,
     Math.min(rd / CONFIG.RATING_BONUS_SCALE, CONFIG.RATING_BONUS_CAP));
-  return [Math.round((g.combined_accuracy + bonus) * 100) / 100, rd];
+  // Reward wins that went the distance so short games stop dominating: a nudge for
+  // finishing with checkmate and for grinding into a real endgame.
+  const depthBonus = (g.ended_in_checkmate ? CONFIG.FLAWLESS_CHECKMATE_BONUS : 0)
+    + (g.reached_endgame ? CONFIG.FLAWLESS_ENDGAME_BONUS : 0);
+  return [Math.round((g.combined_accuracy + bonus + depthBonus) * 100) / 100, rd];
 }
 
 export function bestTactic(g) {
@@ -481,7 +529,7 @@ export function wildRideStats(g) {
 }
 
 // ===================== ranking into the five tabs =====================
-export function rankIntoTabs(results, username, nSeen, topN = CONFIG.TOP_N) {
+export function rankIntoTabs(results, username, nSeen, topN = CONFIG.TOP_N, opts = {}) {
   const wins = results.filter(r => r.my_result === 'win');
 
   // Flawless
@@ -534,6 +582,14 @@ export function rankIntoTabs(results, username, nSeen, topN = CONFIG.TOP_N) {
   swindlePool.sort((a, b) => (b.lost_streak - a.lost_streak) || (parseInt(b.opp_rating) - parseInt(a.opp_rating)));
   const swindles = swindlePool.slice(0, topN);
 
+  // Endgame grinds: wins that stayed in a low-material endgame for a sustained
+  // stretch (both sides pared down) and were still converted.
+  const endgamePool = wins.filter(r => !r.opp_abandoned
+    && r.endgame_run >= CONFIG.ENDGAME_GRIND_MIN_PLIES);
+  endgamePool.sort((a, b) => (b.endgame_run - a.endgame_run)
+    || (parseInt(b.opp_rating) - parseInt(a.opp_rating)));
+  const endgameGrinds = endgamePool.slice(0, topN);
+
   const dates = results.map(r => r.date).filter(Boolean).sort();
   const engineCount = results.filter(r => r.evals_from === 'engine').length;
   const meta = {
@@ -542,10 +598,12 @@ export function rankIntoTabs(results, username, nSeen, topN = CONFIG.TOP_N) {
     games_analyzed: results.length,
     wins_analyzed: wins.length,
     engine_evaluated: engineCount,
+    include_bots: !!opts.includeBots,
+    include_unrated: !!opts.includeUnrated,
     flawless_pool_size: flawlessPool.length,
     date_from: dates.length ? dates[0] : null,
     date_to: dates.length ? dates[dates.length - 1] : null,
   };
 
-  return { meta, flawless, highest_rated: highestRated, underdogs, wild_rides: wildRides, swindles };
+  return { meta, flawless, highest_rated: highestRated, underdogs, wild_rides: wildRides, swindles, endgame_grinds: endgameGrinds };
 }
