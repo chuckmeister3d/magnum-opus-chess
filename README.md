@@ -5,8 +5,7 @@
 A website that finds your best Lichess/Chess.com games and shows them as an interactive report: five ranked tabs, a scrubbable board for every game. You type your username, pick a date range, and get your report.
 
 
-<img width="959" height="819" alt="Screenshot 2026-07-14 at 10 04 12" src="https://github.com/user-attachments/assets/22854cd8-38a9-4ff8-9c2e-c81d8cc6f157" />
-
+<img width="785" height="720" alt="Screenshot 2026-07-14 at 13 42 34" src="https://github.com/user-attachments/assets/c53ead40-abdc-4d28-adb6-b4e13288f8b6" />
 
 
 **The key idea:** all the chess analysis (including Stockfish) runs *in the visitor's own browser*. That means:
