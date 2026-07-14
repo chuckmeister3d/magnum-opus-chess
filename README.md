@@ -5,7 +5,7 @@
 A website that finds your best Lichess games and shows them as an interactive report: five ranked tabs, a scrubbable board for every game. You type your username, pick a date range, and get your report.
 
 
-<img width="715" height="768" alt="Screenshot 2026-07-12 at 10 24 30" src="https://github.com/user-attachments/assets/1eb99c2e-8559-45b1-8019-ceda6e850681" />
+<img width="959" height="819" alt="Screenshot 2026-07-14 at 10 04 12" src="https://github.com/user-attachments/assets/2417e1c2-6d8e-4c88-8302-b8393a8b8a6b" />
 
 
 **The key idea:** all the chess analysis (including Stockfish) runs *in the visitor's own browser*. That means:
@@ -18,10 +18,12 @@ This is the same approach lichess.org itself uses for in-browser analysis.
 - **Biggest Upsets** — widest rating-gap wins.
 - **Wild Rides** — games where the eval see-sawed wildly before the win.
 - **Swindles** — losing for a sustained stretch, then still winning (or escaping by stalemate).
+- **Endgame Grinds** – wins you ground out in a long, low-material endgame.
 
 
-  <img width="715" height="768" alt="Screenshot 2026-07-12 at 10 35 58" src="https://github.com/user-attachments/assets/44ebb6ef-a1c6-493f-962d-888eea4222d7" />
-  
+<img width="702" height="836" alt="Screenshot 2026-07-14 at 10 04 40" src="https://github.com/user-attachments/assets/91ce0a8c-dd14-4a83-8986-e0314bf1f81d" />
+
+
 
 ## Try it locally
 
@@ -54,6 +56,11 @@ Type a Lichess username, choose all-time or a date range, and go.
 ### The time estimate
 
 Before analysing un-evaluated games, the site benchmarks Stockfish on the visitor's actual device, then shows a real estimate and asks for consent. They can analyse everything, cap it to the most recent N games, or skip and use only their Lichess-analysed games.
+
+### Updates
+
+– Added new controls to include/exclude different time formats, games vs bots, and unrated games
+– Added a share report button (as html) and a share game button for each game (GIF or lichess link)
 
 ## Credits
 
