@@ -2,7 +2,7 @@
 
 **Live site: [magnum-opus-chess.netlify.app](https://magnum-opus-chess.netlify.app)**
 
-A website that finds your best Lichess games and shows them as an interactive report: five ranked tabs, a scrubbable board for every game. You type your username, pick a date range, and get your report.
+A website that finds your best Lichess/Chess.com games and shows them as an interactive report: five ranked tabs, a scrubbable board for every game. You type your username, pick a date range, and get your report.
 
 
 <img width="959" height="819" alt="Screenshot 2026-07-14 at 10 04 12" src="https://github.com/user-attachments/assets/2417e1c2-6d8e-4c88-8302-b8393a8b8a6b" />
