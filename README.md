@@ -5,7 +5,7 @@
 A website that finds your best Lichess/Chess.com games and shows them as an interactive report: five ranked tabs, a scrubbable board for every game. You type your username, pick a date range, and get your report.
 
 
-<img width="702" height="782" alt="Screenshot 2026-07-14 at 13 33 26" src="https://github.com/user-attachments/assets/f3935f8e-e7cf-4f38-92f8-a146c3093d86" />
+<img width="959" height="819" alt="Screenshot 2026-07-14 at 10 04 12" src="https://github.com/user-attachments/assets/22854cd8-38a9-4ff8-9c2e-c81d8cc6f157" />
 
 
 
@@ -22,7 +22,7 @@ This is the same approach lichess.org itself uses for in-browser analysis.
 - **Endgame Grinds** – wins you ground out in a long, low-material endgame.
 
 
-<img width="702" height="836" alt="Screenshot 2026-07-14 at 10 04 40" src="https://github.com/user-attachments/assets/91ce0a8c-dd14-4a83-8986-e0314bf1f81d" />
+<img width="702" height="782" alt="Screenshot 2026-07-14 at 13 33 26" src="https://github.com/user-attachments/assets/2468e465-0adc-447d-b56d-1e913d3b49f1" />
 
 
 
