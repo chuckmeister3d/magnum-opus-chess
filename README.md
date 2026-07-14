@@ -60,7 +60,10 @@ Before analysing un-evaluated games, the site benchmarks Stockfish on the visito
 ### Updates
 
 – Added new controls to include/exclude different time formats, games vs bots, and unrated games
+
 – Added a share report button (as html) and a share game button for each game (GIF or lichess link)
+
+– Added chess.com integration
 
 ## Credits
 
